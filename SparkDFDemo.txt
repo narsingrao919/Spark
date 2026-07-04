@@ -1,0 +1,535 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
+spark = SparkSession.builder.master("local")\
+      .appName("djsbalakrishnan-demo")\
+      .getOrCreate()\
+     
+26/05/21 10:07:10 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+spark
+SparkSession - in-memory
+
+SparkContext
+
+Spark UI
+
+Versionv3.1.2MasterlocalAppNamedjsbalakrishnan-demo
+​
+    ### Create Dataframe \n",
+    "- [x] From my external file \n",
+    "- [x] From RDD \n",
+    "- [x] From python objects \n",
+    "- [x] From SQL using JDBC "
+# From external File
+​
+movieDf = spark.read.format("csv").option("delimiter" , ",").option("header" , True)\
+          .option("inferschema", True).load("/user/scaleraprilu89713/movies.csv")
+​
+ratingsDf = spark.read.format("csv").option("delimiter" , ",").option("header" , True)\
+          .option("inferschema", True).load("/user/scaleraprilu89713/ratings.csv")
+   
+                                                                                
+    # spark. -- spark session\n",
+    # read. -- is the method for reading from external file \n",
+    # format(\"csv\"). -- CSV format \n",
+    # option(\"delimiter\", \",\"). -- what separated my columns\n",
+    # option(\"header\", True) -- what are my column names \n",
+    # .option(\"inferschema\", True). -- what are my column datatypes \n",
+    # load(\"\") -- I need to fetch from the path in my params 
+#Describe 
+movieDf.printSchema()
+root
+ |-- movieId: integer (nullable = true)
+ |-- title: string (nullable = true)
+ |-- genres: string (nullable = true)
+
+ratingsDf.printSchema()
+root
+ |-- userId: integer (nullable = true)
+ |-- movieId: integer (nullable = true)
+ |-- rating: double (nullable = true)
+ |-- timestamp: integer (nullable = true)
+
+movieDf.show(5, truncate=False)
++-------+----------------------------------+-------------------------------------------+
+|movieId|title                             |genres                                     |
++-------+----------------------------------+-------------------------------------------+
+|1      |Toy Story (1995)                  |Adventure|Animation|Children|Comedy|Fantasy|
+|2      |Jumanji (1995)                    |Adventure|Children|Fantasy                 |
+|3      |Grumpier Old Men (1995)           |Comedy|Romance                             |
+|4      |Waiting to Exhale (1995)          |Comedy|Drama|Romance                       |
+|5      |Father of the Bride Part II (1995)|Comedy                                     |
++-------+----------------------------------+-------------------------------------------+
+only showing top 5 rows
+
+#Creating dataframes from python objects
+​
+booklist = [ 
+    ['The 48 Laws of Power', 'Robert Greene'],
+    ['The 100-Mile Diet', 'Alisa Smith and J.B. MacKinnon'],
+    ['Act like a Lady, Think like a Man', 'Steve Harvey'],
+    ['As a Man Thinketh', 'James Allen'],
+    ['Dress for Success', 'John T. Molloy']
+           ]
+​
+​
+booklistSchema= ['Title' , 'Author']
+booksDf=spark.createDataFrame(booklist, booklistSchema)
+booksDf.printSchema()
+root
+ |-- Title: string (nullable = true)
+ |-- Author: string (nullable = true)
+
+#From RDD
+Studentlist = [
+('vikram',34) , ('dhiraj', 35), ('vijay', 24),('sharma', 52)
+]
+​
+studentsrdd = spark.sparkContext.parallelize(Studentlist)
+studentsrdd.collect()
+[('vikram', 34), ('dhiraj', 35), ('vijay', 24), ('sharma', 52)]
+studentdff = studentsrdd.toDF(['Name' , 'Age'])
+studentdff.printSchema()
+root
+ |-- Name: string (nullable = true)
+ |-- Age: long (nullable = true)
+
+# From SQL - 2
+# Syntax for creating DF from your SQL query,
+# customerDF = spark.sql("select * from default.acustomers")
+#Go through the source code to get more clarity regarding the methods Spark Actions ->Count() ->Show() ->Describe()
+
+#it will return number of rows in the dataframe
+movieDf.count()
+27278
+movieDf.show(truncate=False)
++-------+-------------------------------------+-------------------------------------------+
+|movieId|title                                |genres                                     |
++-------+-------------------------------------+-------------------------------------------+
+|1      |Toy Story (1995)                     |Adventure|Animation|Children|Comedy|Fantasy|
+|2      |Jumanji (1995)                       |Adventure|Children|Fantasy                 |
+|3      |Grumpier Old Men (1995)              |Comedy|Romance                             |
+|4      |Waiting to Exhale (1995)             |Comedy|Drama|Romance                       |
+|5      |Father of the Bride Part II (1995)   |Comedy                                     |
+|6      |Heat (1995)                          |Action|Crime|Thriller                      |
+|7      |Sabrina (1995)                       |Comedy|Romance                             |
+|8      |Tom and Huck (1995)                  |Adventure|Children                         |
+|9      |Sudden Death (1995)                  |Action                                     |
+|10     |GoldenEye (1995)                     |Action|Adventure|Thriller                  |
+|11     |American President, The (1995)       |Comedy|Drama|Romance                       |
+|12     |Dracula: Dead and Loving It (1995)   |Comedy|Horror                              |
+|13     |Balto (1995)                         |Adventure|Animation|Children               |
+|14     |Nixon (1995)                         |Drama                                      |
+|15     |Cutthroat Island (1995)              |Action|Adventure|Romance                   |
+|16     |Casino (1995)                        |Crime|Drama                                |
+|17     |Sense and Sensibility (1995)         |Drama|Romance                              |
+|18     |Four Rooms (1995)                    |Comedy                                     |
+|19     |Ace Ventura: When Nature Calls (1995)|Comedy                                     |
+|20     |Money Train (1995)                   |Action|Comedy|Crime|Drama|Thriller         |
++-------+-------------------------------------+-------------------------------------------+
+only showing top 20 rows
+
+# describe-> gives all the metrics about the given column
+movieDf.describe("title").show()
+​
+[Stage 13:>                                                         (0 + 1) / 1]
++-------+--------------------+
+|summary|               title|
++-------+--------------------+
+|  count|               27278|
+|   mean|                null|
+| stddev|                null|
+|    min|"""Great Performa...|
+|    max|       貞子3D (2012)|
++-------+--------------------+
+
+                                                                                
+ratingsDf.describe("rating").show()
+[Stage 15:===========================================>              (3 + 1) / 4]
++-------+------------------+
+|summary|            rating|
++-------+------------------+
+|  count|          17669143|
+|   mean| 3.526477826343926|
+| stddev|1.0522842245193795|
+|    min|               0.5|
+|    max|               5.0|
++-------+------------------+
+
+                                                                                
+##Narrow Transformation-> doesn't reqired shuffel of data between partition These transformation will result in a new Dataframe
+
+Some of the functions are ->select() ->filter() ->drop() ->withColumn()
+
+#select()
+​
+#select userId, movieid, rating from ratings-> which is similar as select in sql
+​
+#1. when ever you find, column as params then use col() function from pyspark.sql.functions
+​
+newratingdf=ratingsDf.select(col("userId"), col("movieId"),col("rating"))
+newratingdf.printSchema()
+root
+ |-- userId: integer (nullable = true)
+ |-- movieId: integer (nullable = true)
+ |-- rating: double (nullable = true)
+
+newratingdf.show(10,truncate=False)
++------+-------+------+
+|userId|movieId|rating|
++------+-------+------+
+|1     |2      |3.5   |
+|1     |29     |3.5   |
+|1     |32     |3.5   |
+|1     |47     |3.5   |
+|1     |50     |3.5   |
+|1     |112    |3.5   |
+|1     |151    |4.0   |
+|1     |223    |4.0   |
+|1     |253    |4.0   |
+|1     |260    |4.0   |
++------+-------+------+
+only showing top 10 rows
+
+#filter 
+# def filter(condition:column):Dataset(T)->should i use col() function
+​
+highratingdf= ratingsDf.filter(col("rating")==5.0)
+highratingdf.printSchema()
+root
+ |-- userId: integer (nullable = true)
+ |-- movieId: integer (nullable = true)
+ |-- rating: double (nullable = true)
+ |-- timestamp: integer (nullable = true)
+
+highratingdf.show(10,truncate=False)
++------+-------+------+----------+
+|userId|movieId|rating|timestamp |
++------+-------+------+----------+
+|1     |4993   |5.0   |1112484682|
+|1     |5952   |5.0   |1112484619|
+|1     |7153   |5.0   |1112484633|
+|1     |8507   |5.0   |1094786027|
+|2     |62     |5.0   |974820598 |
+|2     |70     |5.0   |974820691 |
+|2     |260    |5.0   |974821014 |
+|2     |266    |5.0   |974820748 |
+|2     |480    |5.0   |974820720 |
+|2     |541    |5.0   |974821014 |
++------+-------+------+----------+
+only showing top 10 rows
+
+#Drop used to drop a column from the table
+#As colname is String in source code we need not give any col(colName: String)
+dropratingsdf= ratingsDf.drop("movieId")
+dropratingsdf.printSchema()
+root
+ |-- userId: integer (nullable = true)
+ |-- rating: double (nullable = true)
+ |-- timestamp: integer (nullable = true)
+
+dropratingsdf.show(truncate=False)
++------+------+----------+
+|userId|rating|timestamp |
++------+------+----------+
+|1     |3.5   |1112486027|
+|1     |3.5   |1112484676|
+|1     |3.5   |1112484819|
+|1     |3.5   |1112484727|
+|1     |3.5   |1112484580|
+|1     |3.5   |1094785740|
+|1     |4.0   |1094785734|
+|1     |4.0   |1112485573|
+|1     |4.0   |1112484940|
+|1     |4.0   |1112484826|
+|1     |4.0   |1112484703|
+|1     |4.0   |1112484767|
+|1     |4.0   |1112484798|
+|1     |3.5   |1094785709|
+|1     |3.5   |1112485980|
+|1     |4.0   |1112484603|
+|1     |3.5   |1112485557|
+|1     |3.5   |1112484661|
+|1     |3.0   |1094785691|
+|1     |3.5   |1094785621|
++------+------+----------+
+only showing top 20 rows
+
+#withColumn
+#withColumn(colName: String, col: Column)->means add a new column name 
+​
+#Below line add new column with narsing and saperate -o.5 on everyvalue in rating column and show the result in narsing column
+newcolumnadd = ratingsDf.withColumn("Narsing",col("rating")-0.5)
+newcolumnadd.printSchema()
+​
+root
+ |-- userId: integer (nullable = true)
+ |-- movieId: integer (nullable = true)
+ |-- rating: double (nullable = true)
+ |-- timestamp: integer (nullable = true)
+ |-- Narsing: double (nullable = true)
+
+newcolumnadd.show(10,truncate=False)
++------+-------+------+----------+-------+
+|userId|movieId|rating|timestamp |Narsing|
++------+-------+------+----------+-------+
+|1     |2      |3.5   |1112486027|3.0    |
+|1     |29     |3.5   |1112484676|3.0    |
+|1     |32     |3.5   |1112484819|3.0    |
+|1     |47     |3.5   |1112484727|3.0    |
+|1     |50     |3.5   |1112484580|3.0    |
+|1     |112    |3.5   |1094785740|3.0    |
+|1     |151    |4.0   |1094785734|3.5    |
+|1     |223    |4.0   |1112485573|3.5    |
+|1     |253    |4.0   |1112484940|3.5    |
+|1     |260    |4.0   |1112484826|3.5    |
++------+-------+------+----------+-------+
+only showing top 10 rows
+
+#Means create new column with vikas and add +2 to all the values of movieid and show in narsing column
+newcolumnadd2 = ratingsDf.withColumn("vikas",col("movieId")+2)
+newcolumnadd2.printSchema()
+root
+ |-- userId: integer (nullable = true)
+ |-- movieId: integer (nullable = true)
+ |-- rating: double (nullable = true)
+ |-- timestamp: integer (nullable = true)
+ |-- vikas: integer (nullable = true)
+
+newcolumnadd2.show(10,truncate=False)
++------+-------+------+----------+-----+
+|userId|movieId|rating|timestamp |vikas|
++------+-------+------+----------+-----+
+|1     |2      |3.5   |1112486027|4    |
+|1     |29     |3.5   |1112484676|31   |
+|1     |32     |3.5   |1112484819|34   |
+|1     |47     |3.5   |1112484727|49   |
+|1     |50     |3.5   |1112484580|52   |
+|1     |112    |3.5   |1094785740|114  |
+|1     |151    |4.0   |1094785734|153  |
+|1     |223    |4.0   |1112485573|225  |
+|1     |253    |4.0   |1112484940|255  |
+|1     |260    |4.0   |1112484826|262  |
++------+-------+------+----------+-----+
+only showing top 10 rows
+
+Wide Transformation #Explained any three of below ->groupBy() ->distinct() ->join() ->orderBy() ->sort()
+
+#group the dataset by using the specified columns, and perform aggregations on them
+#col->function should be used 
+#The below query is similar as
+#select userId, count(*) from ratingsDf groupBy 1 ->in SQL
+grouponuserid = ratingsDf.groupBy(col("userId")).count()
+grouponuserid.printSchema()
+​
+root
+ |-- userId: integer (nullable = true)
+ |-- count: long (nullable = false)
+
+grouponuserid.show()
+[Stage 8:============================================>              (3 + 1) / 4]
++------+-----+
+|userId|count|
++------+-----+
+|   148|  128|
+|   463|   80|
+|   471|  548|
+|   496|  168|
+|   833|   47|
+|  1088|   60|
+|  1238|   97|
+|  1342|   25|
+|  1580|   42|
+|  1591|   50|
+|  1645|  108|
+|  1829|  288|
+| 17679|   88|
+| 17753|   77|
+| 18024|  110|
+| 18051|   40|
+| 18498|   32|
+| 18654|   22|
+| 18800|   50|
+| 18866|  110|
++------+-----+
+only showing top 20 rows
+
+                                                                                
+# def join(right: Dataset[_]) -> 
+# join -> ratings and movies \n",
+    
+# select * from movies m join ratings r on m.movieID = r.movieID
+    
+# def join(right: Dataset[_]) -> my argument takes the entire DF 
+#we can use lefton or righton for joining tables
+    
+movieratingdf=movieDf.join(ratingsDf, how="inner", on="movieId")
+movieratingdf.printSchema()
+​
+root
+ |-- movieId: integer (nullable = true)
+ |-- title: string (nullable = true)
+ |-- genres: string (nullable = true)
+ |-- userId: integer (nullable = true)
+ |-- rating: double (nullable = true)
+ |-- timestamp: integer (nullable = true)
+
+movieratingdf.show()
++-------+--------------------+--------------------+------+------+----------+
+|movieId|               title|              genres|userId|rating| timestamp|
++-------+--------------------+--------------------+------+------+----------+
+|      2|      Jumanji (1995)|Adventure|Childre...|     1|   3.5|1112486027|
+|     29|City of Lost Chil...|Adventure|Drama|F...|     1|   3.5|1112484676|
+|     32|Twelve Monkeys (a...|Mystery|Sci-Fi|Th...|     1|   3.5|1112484819|
+|     47|Seven (a.k.a. Se7...|    Mystery|Thriller|     1|   3.5|1112484727|
+|     50|Usual Suspects, T...|Crime|Mystery|Thr...|     1|   3.5|1112484580|
+|    112|Rumble in the Bro...|Action|Adventure|...|     1|   3.5|1094785740|
+|    151|      Rob Roy (1995)|Action|Drama|Roma...|     1|   4.0|1094785734|
+|    223|       Clerks (1994)|              Comedy|     1|   4.0|1112485573|
+|    253|Interview with th...|        Drama|Horror|     1|   4.0|1112484940|
+|    260|Star Wars: Episod...|Action|Adventure|...|     1|   4.0|1112484826|
+|    293|Léon: The Profess...|Action|Crime|Dram...|     1|   4.0|1112484703|
+|    296| Pulp Fiction (1994)|Comedy|Crime|Dram...|     1|   4.0|1112484767|
+|    318|Shawshank Redempt...|         Crime|Drama|     1|   4.0|1112484798|
+|    337|What's Eating Gil...|               Drama|     1|   3.5|1094785709|
+|    367|    Mask, The (1994)|Action|Comedy|Cri...|     1|   3.5|1112485980|
+|    541| Blade Runner (1982)|Action|Sci-Fi|Thr...|     1|   4.0|1112484603|
+|    589|Terminator 2: Jud...|       Action|Sci-Fi|     1|   3.5|1112485557|
+|    593|Silence of the La...|Crime|Horror|Thri...|     1|   3.5|1112484661|
+|    653|  Dragonheart (1996)|Action|Adventure|...|     1|   3.0|1094785691|
+|    919|Wizard of Oz, The...|Adventure|Childre...|     1|   3.5|1094785621|
++-------+--------------------+--------------------+------+------+----------+
+only showing top 20 rows
+
+#sort based on the column name 
+# def sort(sortExprs: Column*)->so input should be a col()
+sortonratings = ratingsDf.sort(col("timestamp"))
+sortonratings.show()
+[Stage 14:===========================================>              (3 + 1) / 4]
++------+-------+------+---------+
+|userId|movieId|rating|timestamp|
++------+-------+------+---------+
+|  1837|  80862|   5.0|129649398|
+| 28507|   1176|   4.0|789652004|
+|131160|     47|   5.0|789652009|
+|131160|   1079|   3.0|789652009|
+|131160|     21|   3.0|789652009|
+| 85252|     45|   3.0|822873600|
+| 85252|     21|   4.0|822873600|
+| 85252|     50|   5.0|822873600|
+| 85252|      2|   4.0|822873600|
+| 85252|     34|   5.0|822873600|
+| 85252|     32|   4.0|822873600|
+| 85252|     48|   4.0|822873600|
+| 85252|     36|   5.0|822873600|
+| 85252|     12|   1.0|822873600|
+| 85252|     24|   3.0|822873600|
+| 53434|     19|   1.0|822873600|
+| 85252|     19|   3.0|822873600|
+| 85252|     17|   5.0|822873600|
+| 85252|     10|   5.0|822873600|
+| 85252|      7|   5.0|822873600|
++------+-------+------+---------+
+only showing top 20 rows
+
+                                                                                
+Comedy movie with the most number of ratings using DF
+->filter the comedy movie 
+->join the movie and ratings
+->group by movie title
+->order by count
+->select top 1
+#filtet ->def filter(condition: Column)
+​
+filtercomedymovie = movieDf.filter(col("genres").contains("Comedy"))
+filtercomedymovie.count()
+8374
+join2tables
+#join the movie and ratings
+# shows filtered comedy movies after joining bothe the tables
+join2tables = filtercomedymovie.join(ratingsDf,how="inner", on="movieId")
+join2tables.show()
+groupbyoncomedy.printSchema()
+# def groupBy(cols: Column*):
+groupbyoncomedy = join2tables.groupBy(col("title")).count()
+groupbyoncomedy.printSchema()
+root
+ |-- title: string (nullable = true)
+ |-- count: long (nullable = false)
+
+show()
+groupbyoncomedy.show()
+orderandlimitcomedymovies
+#def orderBy(sortExprs: Column*):->
+orderandlimitcomedymovies = groupbyoncomedy.orderBy(col("count"), ascending=False)
+orderandlimitcomedymovies.printSchema()
+root
+ |-- title: string (nullable = true)
+ |-- count: long (nullable = false)
+
+movie
+#provides the exact top rating comedy movie
+orderandlimitcomedymovies.show(1, truncate=False)
+[Stage 26:===============================================>      (176 + 1) / 200]
++-------------------+-----+
+|title              |count|
++-------------------+-----+
+|Pulp Fiction (1994)|59522|
++-------------------+-----+
+only showing top 1 row
+
+                                                                                
+
+
+
+
+
+
+#need to anlalyze this to know the internal working and stages of catalyst optimiser
+orderandlimitcomedymovies.explain(True)
+== Parsed Logical Plan ==
+'Sort ['count DESC NULLS LAST], true
++- Aggregate [title#63], [title#63, count(1) AS count#345L]
+   +- Project [movieId#62, title#63, genres#64, userId#84, rating#86, timestamp#87]
+      +- Join Inner, (movieId#62 = movieId#85)
+         :- Filter Contains(genres#64, Comedy)
+         :  +- Relation[movieId#62,title#63,genres#64] csv
+         +- Relation[userId#84,movieId#85,rating#86,timestamp#87] csv
+
+== Analyzed Logical Plan ==
+title: string, count: bigint
+Sort [count#345L DESC NULLS LAST], true
++- Aggregate [title#63], [title#63, count(1) AS count#345L]
+   +- Project [movieId#62, title#63, genres#64, userId#84, rating#86, timestamp#87]
+      +- Join Inner, (movieId#62 = movieId#85)
+         :- Filter Contains(genres#64, Comedy)
+         :  +- Relation[movieId#62,title#63,genres#64] csv
+         +- Relation[userId#84,movieId#85,rating#86,timestamp#87] csv
+
+== Optimized Logical Plan ==
+Sort [count#345L DESC NULLS LAST], true
++- Aggregate [title#63], [title#63, count(1) AS count#345L]
+   +- Project [title#63]
+      +- Join Inner, (movieId#62 = movieId#85)
+         :- Project [movieId#62, title#63]
+         :  +- Filter ((isnotnull(genres#64) AND Contains(genres#64, Comedy)) AND isnotnull(movieId#62))
+         :     +- Relation[movieId#62,title#63,genres#64] csv
+         +- Project [movieId#85]
+            +- Filter isnotnull(movieId#85)
+               +- Relation[userId#84,movieId#85,rating#86,timestamp#87] csv
+
+== Physical Plan ==
+*(4) Sort [count#345L DESC NULLS LAST], true, 0
++- Exchange rangepartitioning(count#345L DESC NULLS LAST, 200), ENSURE_REQUIREMENTS, [id=#494]
+   +- *(3) HashAggregate(keys=[title#63], functions=[count(1)], output=[title#63, count#345L])
+      +- Exchange hashpartitioning(title#63, 200), ENSURE_REQUIREMENTS, [id=#490]
+         +- *(2) HashAggregate(keys=[title#63], functions=[partial_count(1)], output=[title#63, count#355L])
+            +- *(2) Project [title#63]
+               +- *(2) BroadcastHashJoin [movieId#62], [movieId#85], Inner, BuildLeft, false
+                  :- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, true] as bigint)),false), [id=#482]
+                  :  +- *(1) Project [movieId#62, title#63]
+                  :     +- *(1) Filter ((isnotnull(genres#64) AND Contains(genres#64, Comedy)) AND isnotnull(movieId#62))
+                  :        +- FileScan csv [movieId#62,title#63,genres#64] Batched: false, DataFilters: [isnotnull(genres#64), Contains(genres#64, Comedy), isnotnull(movieId#62)], Format: CSV, Location: InMemoryFileIndex[hdfs://master:9000/user/scaleraprilu89713/movies.csv], PartitionFilters: [], PushedFilters: [IsNotNull(genres), StringContains(genres,Comedy), IsNotNull(movieId)], ReadSchema: struct<movieId:int,title:string,genres:string>
+                  +- *(2) Filter isnotnull(movieId#85)
+                     +- FileScan csv [movieId#85] Batched: false, DataFilters: [isnotnull(movieId#85)], Format: CSV, Location: InMemoryFileIndex[hdfs://master:9000/user/scaleraprilu89713/ratings.csv], PartitionFilters: [], PushedFilters: [IsNotNull(movieId)], ReadSchema: struct<movieId:int>
