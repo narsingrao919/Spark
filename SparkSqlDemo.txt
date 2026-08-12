@@ -1,0 +1,169 @@
+import pyspark
+from pyspark.sql import SparkSession 
+spark = SparkSession.builder.master("local")\
+        .appName("djsbalakrishnan-demo")\
+        .getOrCreate()
+​
+​
+#for all the highlevel api's we don't have sparkcontext
+#instead we use spark session
+#inside spark session we will have spark context and sql contest and other objects
+​
+spark
+​
+SparkSession - in-memory
+
+SparkContext
+
+Spark UI
+
+Versionv3.1.2MasterlocalAppNamedjsbalakrishnan-demo
+#problem: we want all the comedy movies with highest number of ratings
+# Read the input from movies and then ratings
+​
+movieDf = spark.read.format("csv").option("delimiter" , ",").option("header" , True)\
+          .option("inferschema", True).load("/user/scaleraprilu89713/movies.csv")
+​
+ratingsDf = spark.read.format("csv").option("delimiter" , ",").option("header" , True)\
+          .option("inferschema", True).load("/user/scaleraprilu89713/ratings.csv")
+​
+#format ->The default format is parque so we tell csv to read the file
+#delimitet-> The columm names saperated by coma
+#header-> column names that i can interact with
+#inferschema->The data types of the column names
+#Note:inferschema first reads the data and then predicts the data type
+​
+​
+                                                                                
+movieDf.printSchema()
+root
+ |-- movieId: integer (nullable = true)
+ |-- title: string (nullable = true)
+ |-- genres: string (nullable = true)
+
+ratingsDf.printSchema()
+root
+ |-- userId: integer (nullable = true)
+ |-- movieId: integer (nullable = true)
+ |-- rating: double (nullable = true)
+ |-- timestamp: integer (nullable = true)
+
+#Takes the data creates a view sort(means temporary table movies and ratings) of datastructure
+movieDf.createOrReplaceTempView("movies")
+ratingsDf.createOrReplaceTempView("rating")
+spark.sql("select * from movies limit 13").show(truncate=False)
++-------+----------------------------------+-------------------------------------------+
+|movieId|title                             |genres                                     |
++-------+----------------------------------+-------------------------------------------+
+|1      |Toy Story (1995)                  |Adventure|Animation|Children|Comedy|Fantasy|
+|2      |Jumanji (1995)                    |Adventure|Children|Fantasy                 |
+|3      |Grumpier Old Men (1995)           |Comedy|Romance                             |
+|4      |Waiting to Exhale (1995)          |Comedy|Drama|Romance                       |
+|5      |Father of the Bride Part II (1995)|Comedy                                     |
+|6      |Heat (1995)                       |Action|Crime|Thriller                      |
+|7      |Sabrina (1995)                    |Comedy|Romance                             |
+|8      |Tom and Huck (1995)               |Adventure|Children                         |
+|9      |Sudden Death (1995)               |Action                                     |
+|10     |GoldenEye (1995)                  |Action|Adventure|Thriller                  |
+|11     |American President, The (1995)    |Comedy|Drama|Romance                       |
+|12     |Dracula: Dead and Loving It (1995)|Comedy|Horror                              |
+|13     |Balto (1995)                      |Adventure|Animation|Children               |
++-------+----------------------------------+-------------------------------------------+
+
+spark.sql("select * from rating limit 10").show(truncate=False)
++------+-------+------+----------+
+|userId|movieId|rating|timestamp |
++------+-------+------+----------+
+|1     |2      |3.5   |1112486027|
+|1     |29     |3.5   |1112484676|
+|1     |32     |3.5   |1112484819|
+|1     |47     |3.5   |1112484727|
+|1     |50     |3.5   |1112484580|
+|1     |112    |3.5   |1094785740|
+|1     |151    |4.0   |1094785734|
+|1     |223    |4.0   |1112485573|
+|1     |253    |4.0   |1112484940|
+|1     |260    |4.0   |1112484826|
++------+-------+------+----------+
+
+# Write the sql query to get the movies with the most number of ratings in comedy genre in sql
+​
+highest_movie_ratingDf = spark.sql(
+"""
+select m.title, count(*) as rating_count from movies m join rating r on m.movieId = r.movieId
+where m.genres like '%Comedy%' 
+group by m.title
+order by rating_count desc limit 1
+"""
+)
+​
+highest_movie_ratingDf.show()
+[Stage 20:==================================================>   (188 + 2) / 200]
++-------------------+------------+
+|              title|rating_count|
++-------------------+------------+
+|Pulp Fiction (1994)|       59522|
++-------------------+------------+
+
+                                                                                
+
+
+
+
+
+
+highest_movie_ratingDf.explain(True)
+== Parsed Logical Plan ==
+'GlobalLimit 1
++- 'LocalLimit 1
+   +- 'Sort ['rating_count DESC NULLS LAST], true
+      +- 'Aggregate ['m.title], ['m.title, 'count(1) AS rating_count#183]
+         +- 'Filter 'm.genres LIKE %Comedy%
+            +- 'Join Inner, ('m.movieId = 'r.movieId)
+               :- 'SubqueryAlias m
+               :  +- 'UnresolvedRelation [movies], [], false
+               +- 'SubqueryAlias r
+                  +- 'UnresolvedRelation [rating], [], false
+
+== Analyzed Logical Plan ==
+title: string, rating_count: bigint
+GlobalLimit 1
++- LocalLimit 1
+   +- Sort [rating_count#183L DESC NULLS LAST], true
+      +- Aggregate [title#63], [title#63, count(1) AS rating_count#183L]
+         +- Filter genres#64 LIKE %Comedy%
+            +- Join Inner, (movieId#62 = movieId#85)
+               :- SubqueryAlias m
+               :  +- SubqueryAlias movies
+               :     +- Relation[movieId#62,title#63,genres#64] csv
+               +- SubqueryAlias r
+                  +- SubqueryAlias rating
+                     +- Relation[userId#84,movieId#85,rating#86,timestamp#87] csv
+
+== Optimized Logical Plan ==
+GlobalLimit 1
++- LocalLimit 1
+   +- Sort [rating_count#183L DESC NULLS LAST], true
+      +- Aggregate [title#63], [title#63, count(1) AS rating_count#183L]
+         +- Project [title#63]
+            +- Join Inner, (movieId#62 = movieId#85)
+               :- Project [movieId#62, title#63]
+               :  +- Filter ((isnotnull(genres#64) AND Contains(genres#64, Comedy)) AND isnotnull(movieId#62))
+               :     +- Relation[movieId#62,title#63,genres#64] csv
+               +- Project [movieId#85]
+                  +- Filter isnotnull(movieId#85)
+                     +- Relation[userId#84,movieId#85,rating#86,timestamp#87] csv
+
+== Physical Plan ==
+TakeOrderedAndProject(limit=1, orderBy=[rating_count#183L DESC NULLS LAST], output=[title#63,rating_count#183L])
++- *(3) HashAggregate(keys=[title#63], functions=[count(1)], output=[title#63, rating_count#183L])
+   +- Exchange hashpartitioning(title#63, 200), ENSURE_REQUIREMENTS, [id=#364]
+      +- *(2) HashAggregate(keys=[title#63], functions=[partial_count(1)], output=[title#63, count#195L])
+         +- *(2) Project [title#63]
+            +- *(2) BroadcastHashJoin [movieId#62], [movieId#85], Inner, BuildLeft, false
+               :- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, true] as bigint)),false), [id=#356]
+               :  +- *(1) Project [movieId#62, title#63]
+               :     +- *(1) Filter ((isnotnull(genres#64) AND Contains(genres#64, Comedy)) AND isnotnull(movieId#62))
+               :        +- FileScan csv [movieId#62,title#63,genres#64] Batched: false, DataFilters: [isnotnull(genres#64), Contains(genres#64, Comedy), isnotnull(movieId#62)], Format: CSV, Location: InMemoryFileIndex[hdfs://master:9000/user/scaleraprilu89713/movies.csv], PartitionFilters: [], PushedFilters: [IsNotNull(genres), StringContains(genres,Comedy), IsNotNull(movieId)], ReadSchema: struct<movieId:int,title:string,genres:string>
+               +- *(2) Filter isnotnull(movieId#85)
+                  +- FileScan csv [movieId#85] Batched: false, DataFilters: [isnotnull(movieId#85)], Format: CSV, Location: InMemoryFileIndex[hdfs://master:9000/user/scaleraprilu89713/ratings.csv], PartitionFilters: [], PushedFilters: [IsNotNull(movieId)], ReadSchema: struct<movieId:int>
